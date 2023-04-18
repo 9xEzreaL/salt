@@ -1,12 +1,5 @@
 import cv2
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QGraphicsView,
-    QGraphicsScene,
-    QApplication,
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import (
@@ -54,17 +47,17 @@ class CustomGraphicsView(QGraphicsView):
             self.setSceneRect(QRectF(pixmap.rect()))
 
     def wheelEvent(self, event: QWheelEvent):
-        modifiers = QApplication.keyboardModifiers()
-        if modifiers == Qt.ControlModifier:
-            adj = (event.angleDelta().y() / 120) * 0.1
-            self.scale(1 + adj, 1 + adj)
+        zoom_in_factor = 1.25
+        zoom_out_factor = 1 / zoom_in_factor
+        old_pos = self.mapToScene(event.pos())
+        if event.angleDelta().y() > 0:
+            zoom_factor = zoom_in_factor
         else:
-            delta_y = event.angleDelta().y()
-            delta_x = event.angleDelta().x()
-            x = self.horizontalScrollBar().value()
-            self.horizontalScrollBar().setValue(x - delta_x)
-            y = self.verticalScrollBar().value()
-            self.verticalScrollBar().setValue(y - delta_y)
+            zoom_factor = zoom_out_factor
+        self.scale(zoom_factor, zoom_factor)
+        new_pos = self.mapToScene(event.pos())
+        delta = new_pos - old_pos
+        self.translate(delta.x(), delta.y())
 
     def imshow(self, img):
         height, width, channel = img.shape
@@ -108,9 +101,20 @@ class ApplicationInterface(QWidget):
         self.main_window.addWidget(self.panel)
         self.layout.addLayout(self.main_window)
 
+        self.status_panel = self.get_review_side_panel()
+        self.main_window.addWidget(self.status_panel)
+        self.layout.addLayout(self.main_window)
+
+        self.label = QLabel()
+        self.label.resize(200, 100)
+        self.label.setText(f'{self.editor.name}    ...     1/{self.editor.dataset_explorer.get_num_images()}')
+        self.layout.addWidget(self.label)
+
         self.setLayout(self.layout)
 
         self.graphics_view.imshow(self.editor.display)
+
+
 
     def reset(self):
         self.editor.reset()
@@ -123,10 +127,12 @@ class ApplicationInterface(QWidget):
 
     def next_image(self):
         self.editor.next_image()
+        self._update_label(self.editor.name, self.editor.image_id)
         self.graphics_view.imshow(self.editor.display)
 
     def prev_image(self):
         self.editor.prev_image()
+        self._update_label(self.editor.name, self.editor.image_id)
         self.graphics_view.imshow(self.editor.display)
 
     def toggle(self):
@@ -157,6 +163,7 @@ class ApplicationInterface(QWidget):
             ("Transparency Up", lambda: self.transparency_up()),
             ("Transparency Down", lambda: self.transparency_down()),
             ("Save", lambda: self.save_all()),
+            ("Delete Annotations", lambda: self.delete_annotations())
         ]
         for button, lmb in buttons:
             bt = QPushButton(button)
@@ -180,6 +187,28 @@ class ApplicationInterface(QWidget):
             )
             panel_layout.addWidget(label_array[i])
         return panel
+
+    def get_review_side_panel(self):
+        panel = QWidget()
+        panel_layout = QVBoxLayout(panel)
+        label_array = []
+        review_categories = ['not label', 'primary label', 'secondary label', 'final label']
+        for i, _ in enumerate(review_categories):
+            label_array.append(QRadioButton(review_categories[i]))
+            label_array[i].clicked.connect(
+                lambda state, x=review_categories[i]: self.editor.select_status(x)
+            )
+            panel_layout.addWidget(label_array[i])
+
+        return panel
+
+    def _update_label(self, name, image_id):
+        self.label.setText(f'{name}     ...     {image_id+1}/{self.editor.dataset_explorer.get_num_images()}')
+        self.layout.addWidget(self.label)
+        self.setLayout(self.layout)
+
+    def delete_annotations(self):
+        self.editor.delete_annotations()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
