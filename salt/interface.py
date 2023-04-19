@@ -107,7 +107,7 @@ class ApplicationInterface(QWidget):
 
         self.label = QLabel()
         self.label.resize(200, 100)
-        self.label.setText(f'{self.editor.name}    ...     1/{self.editor.dataset_explorer.get_num_images()}')
+        self.label.setText(f'{self.editor.name}    ...     1/{self.editor.dataset_explorer.get_num_images()}    ... {self.editor.get_status_name()}')
         self.layout.addWidget(self.label)
 
         self.setLayout(self.layout)
@@ -149,6 +149,7 @@ class ApplicationInterface(QWidget):
 
     def save_all(self):
         self.editor.save()
+        self._update_label(self.editor.name, self.editor.image_id)
 
     def get_top_bar(self):
         top_bar = QWidget()
@@ -203,7 +204,7 @@ class ApplicationInterface(QWidget):
         return panel
 
     def _update_label(self, name, image_id):
-        self.label.setText(f'{name}     ...     {image_id+1}/{self.editor.dataset_explorer.get_num_images()}')
+        self.label.setText(f'{name}     ...     {image_id+1}/{self.editor.dataset_explorer.get_num_images()}    ... {self.editor.get_status_name()}')
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 

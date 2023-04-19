@@ -35,6 +35,7 @@ def init_coco(dataset_folder, image_names, categories, coco_json_path):
                 "file_name": image_name,
                 "width": im.shape[1],
                 "height": im.shape[0],
+                "status": 0
             }
         )
     with open(coco_json_path, "w") as f:
@@ -149,6 +150,7 @@ class DatasetExplorer:
 
     def get_image_data(self, image_id):
         image_name = self.coco_json["images"][image_id]["file_name"]
+        image_status = self.coco_json["images"][image_id]["status"]
         image_path = os.path.join(self.dataset_folder, image_name)
         embedding_path = os.path.join(
             self.dataset_folder,
@@ -159,7 +161,7 @@ class DatasetExplorer:
         image_bgr = copy.deepcopy(image)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_embedding = np.load(embedding_path)
-        return image, image_bgr, image_embedding, image_name
+        return image, image_bgr, image_embedding, image_name, image_status
 
     def __add_to_our_annotation_dict(self, annotation):
         image_id = annotation["image_id"]
@@ -197,6 +199,10 @@ class DatasetExplorer:
     def save_annotation(self):
         with open(self.coco_json_path, "w") as f:
             json.dump(self.coco_json, f)
+
+    def save_status(self, file_name, status):
+        self.coco_json["images"][file_name]["status"] = status
+        self.save_annotation()
 
     def delete_annotation(self, image_id):
         self.annotations_by_image_id[image_id] = []

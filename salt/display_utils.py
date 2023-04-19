@@ -44,7 +44,7 @@ class DisplayUtils:
 
     def draw_annotations(self, image, annotations, colors):
         for ann, color in zip(annotations, colors):
-            image = self.draw_box_on_image(image, ann, color)
+            # image = self.draw_box_on_image(image, ann, color)
             mask = self.__convert_ann_to_mask(ann, image.shape[0], image.shape[1])
             image = self.overlay_mask_on_image(image, mask, color)
         return image

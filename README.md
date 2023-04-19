@@ -12,7 +12,7 @@ Under active development, apologies for rough edges and bugs. Use at your own ri
 
 ## Usage
 
-1. Setup your dataset in the following format `<dataset_name>/images/*` and create empty folder `<dataset_name>/embeddings`.
+1. Setup your dataset in the following format `<dataset_name>/images/*`.
     - Annotations will be saved in `<dataset_name>/annotations.json` by default.
 2. Copy the `helpers` scripts to the base folder of your `segment-anything` folder.
     - Call `extract_embeddings.py` to extract embeddings for your images.
