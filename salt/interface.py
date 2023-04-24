@@ -151,7 +151,7 @@ class ApplicationInterface(QWidget):
 
     def add(self):
         self.editor.save_ann()
-        self.editor.reset()
+        # self.editor.reset()
         self.graphics_view.imshow(self.editor.display)
 
     def next_image(self):

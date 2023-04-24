@@ -28,12 +28,12 @@ class CurrentCapturedInputs:
         if self.paint_mask is None:
             self.paint_mask = np.zeros(self.curr_mask_shape)
 
-        self.paint_mask[point_y:point_y+10, point_x:point_x+10] = 1
+        self.paint_mask[point_y-3:point_y+3, point_x-3:point_x+3] = 1
 
     def era_paint_mask(self, point_x, point_y):
         if self.paint_mask is None:
             self.paint_mask = np.zeros(self.curr_mask_shape)
-        self.paint_mask[point_y:point_y+10, point_x:point_x+10] = -1
+        self.paint_mask[point_y-3:point_y+3, point_x-3:point_x+3] = -1
 
     def add_input_click(self, input_point, input_label):
         if len(self.input_point) == 0:
@@ -161,9 +161,29 @@ class Editor:
         self.__draw()
 
     def save_ann(self):
+        if self.curr_inputs.paint_mask is not None and self.curr_inputs.curr_point_mask is not None:
+            tmp_combination = self.curr_inputs.paint_mask + self.curr_inputs.curr_point_mask
+            tmp_combination[tmp_combination > 0] = True
+            tmp_combination[tmp_combination < 0] = False
+
+        elif self.curr_inputs.paint_mask is not None:
+            tmp_combination = self.curr_inputs.paint_mask
+            tmp_combination[tmp_combination > 0] = True
+            tmp_combination[tmp_combination < 0] = False
+
+        elif self.curr_inputs.curr_point_mask is not None:
+            tmp_combination = self.curr_inputs.curr_point_mask
+            tmp_combination[tmp_combination > 0] = True
+            tmp_combination[tmp_combination < 0] = False
+
+        else:
+            tmp_combination = None
         self.dataset_explorer.add_annotation(
-            self.image_id, self.category_id, self.curr_inputs.curr_mask
+            self.image_id, self.category_id, tmp_combination
         )
+        # self.dataset_explorer.add_annotation(
+        #     self.image_id, self.category_id, self.curr_inputs.curr_mask
+        # )
 
     def save(self):
         self.dataset_explorer.save_annotation()
