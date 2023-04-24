@@ -134,6 +134,20 @@ class Editor:
         self.onnx_helper.set_image_resolution(self.image.shape[1], self.image.shape[0])
         self.reset()
 
+    def jump2image(self, image_id):
+        self.image_id = image_id - 1
+        (
+            self.image,
+            self.image_bgr,
+            self.image_embedding,
+            self.name,
+            self.status
+        ) = self.dataset_explorer.get_image_data(self.image_id)
+
+        self.display = self.image_bgr.copy()
+        self.onnx_helper.set_image_resolution(self.image.shape[1], self.image.shape[0])
+        self.reset()
+
     def prev_image(self):
         if self.image_id == 0:
             return

@@ -1,6 +1,7 @@
 from pycocotools import mask
 from skimage import measure
 import json
+import tifffile as tiff
 import shutil
 import itertools
 import numpy as np
@@ -102,7 +103,7 @@ class DatasetExplorer:
         self.dataset_folder = dataset_folder
         self.image_names = os.listdir(os.path.join(self.dataset_folder, "images"))
         self.image_names = [
-            os.path.split(name)[1] for name in self.image_names if name.endswith(".jpg") or name.endswith(".png")
+            os.path.split(name)[1] for name in self.image_names if name.endswith(".jpg") or name.endswith(".png") or name.endswith(".tif")
         ]
         self.coco_json_path = coco_json_path
         if not os.path.exists(coco_json_path):
@@ -157,9 +158,15 @@ class DatasetExplorer:
             "embeddings",
             os.path.splitext(os.path.split(image_name)[1])[0] + ".npy",
         )
-        image = cv2.imread(image_path)
+
+        # image = cv2.imread(image_path)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        image = np.expand_dims(tiff.imread(image_path), 2)
+        image = np.concatenate([image, image, image], 2)
+        image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
         image_bgr = copy.deepcopy(image)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
         image_embedding = np.load(embedding_path)
         return image, image_bgr, image_embedding, image_name, image_status
 

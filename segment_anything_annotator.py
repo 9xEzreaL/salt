@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--onnx-models-path", type=str, default="./models")
-    parser.add_argument("--dataset-path", type=str, default="./sample")
+    parser.add_argument("--dataset-path", type=str, default="/media/ExtHDD01/Dataset/label_OAI/sample_10005")
     parser.add_argument("--categories", type=str)
     args = parser.parse_args()
 

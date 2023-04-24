@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QLabel,
     QRadioButton,
+    QComboBox
 )
 
 
@@ -171,6 +172,11 @@ class ApplicationInterface(QWidget):
             bt.clicked.connect(lmb)
             button_layout.addWidget(bt)
 
+        self.box = QComboBox(top_bar)
+        self.box.addItems([str(x + 1) for x in range(self.editor.dataset_explorer.get_num_images())])
+        self.box.currentIndexChanged.connect(self.jump2slice)
+        button_layout.addWidget(self.box)
+
         return top_bar
 
     def get_side_panel(self):
@@ -210,6 +216,11 @@ class ApplicationInterface(QWidget):
 
     def delete_annotations(self):
         self.editor.delete_annotations()
+
+    def jump2slice(self):
+        self.editor.jump2image(int(self.box.currentText()))
+        self._update_label(self.editor.name, self.editor.image_id)
+        self.graphics_view.imshow(self.editor.display)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:

@@ -6,6 +6,7 @@
 import os
 import argparse
 import cv2
+import tifffile as tiff
 from tqdm import tqdm
 import numpy as np
 from segment_anything import sam_model_registry, SamPredictor
@@ -17,9 +18,11 @@ def main(checkpoint_path, model_type, device, images_folder, embeddings_folder):
 
     for image_name in tqdm(os.listdir(images_folder)):
         image_path = os.path.join(images_folder, image_name)
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
+        # image = cv2.imread(image_path)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = np.expand_dims(tiff.imread(image_path), 2)
+        image = np.concatenate([image, image, image], 2)
+        image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
 
         predictor.set_image(image)
 
@@ -33,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint-path", type=str, default="./sam_vit_h_4b8939.pth")
     parser.add_argument("--model_type", type=str, default="default")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--dataset-path", type=str, default="./example_dataset")
+    parser.add_argument("--dataset-path", type=str, default="/media/ExtHDD01/Dataset/label_OAI/sample_10488")
     args = parser.parse_args()
 
     checkpoint_path = args.checkpoint_path
