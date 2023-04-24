@@ -1,6 +1,6 @@
 import cv2
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent, QPen
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import (
     QPushButton,
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QLabel,
     QRadioButton,
-    QComboBox
+    QComboBox,
 )
 
 
@@ -37,6 +37,7 @@ class CustomGraphicsView(QGraphicsView):
         self.setScene(self.scene)
 
         self.image_item = None
+        self.flag = False
 
     def set_image(self, q_img):
         pixmap = QPixmap.fromImage(q_img)
@@ -72,12 +73,39 @@ class CustomGraphicsView(QGraphicsView):
         pos = event.pos()
         pos_in_item = self.mapToScene(pos) - self.image_item.pos()
         x, y = pos_in_item.x(), pos_in_item.y()
-        if event.button() == Qt.LeftButton:
-            label = 1
-        elif event.button() == Qt.RightButton:
-            label = 0
-        self.editor.add_click([int(x), int(y)], label)
+        if self.mode == 'point':
+            self.flag = False
+            if event.button() == Qt.LeftButton:
+                label = 1
+            elif event.button() == Qt.RightButton:
+                label = 0
+            self.editor.add_click([int(x), int(y)], label)
+        elif self.mode == 'paint':
+            self.flag = True
+            self.editor.curr_inputs.add_paint_mask(int(x), int(y))
+        elif self.mode == 'eraser':
+            self.flag = True
+            self.editor.curr_inputs.era_paint_mask(int(x), int(y))
+        self.editor.online_draw()
         self.imshow(self.editor.display)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        pos = event.pos()
+        pos_in_item = self.mapToScene(pos) - self.image_item.pos()
+        x, y = pos_in_item.x(), pos_in_item.y()
+        if self.flag:
+            if self.mode == 'paint':
+                self.editor.curr_inputs.add_paint_mask(int(x), int(y))
+            elif self.mode == 'eraser':
+                self.editor.curr_inputs.era_paint_mask(int(x), int(y))
+            self.editor.online_draw()
+            self.imshow(self.editor.display)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        self.flag = False
+
+    def update_PPE_mode(self, mode):
+        self.mode = mode
 
 
 class ApplicationInterface(QWidget):
@@ -114,7 +142,7 @@ class ApplicationInterface(QWidget):
         self.setLayout(self.layout)
 
         self.graphics_view.imshow(self.editor.display)
-
+        self.execute_mode()
 
 
     def reset(self):
@@ -175,7 +203,14 @@ class ApplicationInterface(QWidget):
         self.box = QComboBox(top_bar)
         self.box.addItems([str(x + 1) for x in range(self.editor.dataset_explorer.get_num_images())])
         self.box.currentIndexChanged.connect(self.jump2slice)
+
+        self.point_paint_era = QComboBox(top_bar)
+        self.point_paint_era.addItems(['point', 'paint', 'eraser'])
+        self.point_paint_era.setCurrentIndex(0)
+        self.point_paint_era.currentIndexChanged.connect(self.execute_mode)
+
         button_layout.addWidget(self.box)
+        button_layout.addWidget(self.point_paint_era)
 
         return top_bar
 
@@ -221,6 +256,11 @@ class ApplicationInterface(QWidget):
         self.editor.jump2image(int(self.box.currentText()))
         self._update_label(self.editor.name, self.editor.image_id)
         self.graphics_view.imshow(self.editor.display)
+
+    def execute_mode(self):
+        self.graphics_view.update_PPE_mode(self.point_paint_era.currentText())
+        # print(self.point_paint_era.currentText())
+        # pass
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
