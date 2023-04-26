@@ -1,6 +1,8 @@
+
 from pycocotools import mask
 from skimage import measure
 import json
+import tifffile as tiff
 import shutil
 import itertools
 import numpy as np
@@ -35,6 +37,7 @@ def init_coco(dataset_folder, image_names, categories, coco_json_path):
                 "file_name": image_name,
                 "width": im.shape[1],
                 "height": im.shape[0],
+                "status": 0
             }
         )
     with open(coco_json_path, "w") as f:
@@ -101,9 +104,7 @@ class DatasetExplorer:
         self.dataset_folder = dataset_folder
         self.image_names = os.listdir(os.path.join(self.dataset_folder, "images"))
         self.image_names = [
-            os.path.split(name)[1]
-            for name in self.image_names
-            if name.endswith(".jpg") or name.endswith(".png")
+            os.path.split(name)[1] for name in self.image_names if name.endswith(".jpg") or name.endswith(".png") or name.endswith(".tif")
         ]
         self.coco_json_path = coco_json_path
         if not os.path.exists(coco_json_path):
@@ -111,9 +112,7 @@ class DatasetExplorer:
         with open(coco_json_path, "r") as f:
             self.coco_json = json.load(f)
 
-        self.categories = [
-            category["name"] for category in self.coco_json["categories"]
-        ]
+        self.categories = [category["name"] for category in self.coco_json["categories"]]
         self.annotations_by_image_id = {}
         for annotation in self.coco_json["annotations"]:
             image_id = annotation["image_id"]
@@ -121,13 +120,9 @@ class DatasetExplorer:
                 self.annotations_by_image_id[image_id] = []
             self.annotations_by_image_id[image_id].append(annotation)
 
-        # self.global_annotation_id = len(self.coco_json["annotations"])
-        try:
-            self.global_annotation_id = (
-                max(self.coco_json["annotations"], key=lambda x: x["id"])["id"] + 1
-            )
-        except:
-            self.global_annotation_id = 0
+        # print(self.annotations_by_image_id)
+
+        self.global_annotation_id = len(self.coco_json["annotations"])
         self.category_colors = distinctipy.get_colors(len(self.categories))
         self.category_colors = [
             tuple([int(255 * c) for c in color]) for color in self.category_colors
@@ -149,22 +144,32 @@ class DatasetExplorer:
             return self.categories, self.category_colors
         return self.categories
 
+    def get_review_status(self):
+        return ['not label', 'primary label', 'secondary label', 'final label']
+
     def get_num_images(self):
         return len(self.image_names)
 
     def get_image_data(self, image_id):
         image_name = self.coco_json["images"][image_id]["file_name"]
+        # image_status = self.coco_json["images"][image_id]["status"]
         image_path = os.path.join(self.dataset_folder, image_name)
         embedding_path = os.path.join(
             self.dataset_folder,
             "embeddings",
             os.path.splitext(os.path.split(image_name)[1])[0] + ".npy",
         )
-        image = cv2.imread(image_path)
+
+        # image = cv2.imread(image_path)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        image = np.expand_dims(tiff.imread(image_path), 2)
+        image = np.concatenate([image, image, image], 2)
+        image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
         image_bgr = copy.deepcopy(image)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
         image_embedding = np.load(embedding_path)
-        return image, image_bgr, image_embedding
+        return image, image_bgr, image_embedding, image_name
 
     def __add_to_our_annotation_dict(self, annotation):
         image_id = annotation["image_id"]
@@ -179,19 +184,8 @@ class DatasetExplorer:
         colors = [self.category_colors[c] for c in cats]
         if return_colors:
             return self.annotations_by_image_id[image_id], colors
-        return self.annotations_by_image_id[image_id]
 
-    def delete_annotations(self, image_id, annotation_id):
-        for annotation in self.coco_json["annotations"]:
-            if (
-                annotation["image_id"] == image_id and annotation["id"] == annotation_id
-            ):  # and annotation["id"] in annotation_ids:
-                self.coco_json["annotations"].remove(annotation)
-                break
-        for annotation in self.annotations_by_image_id[image_id]:
-            if annotation["id"] == annotation_id:
-                self.annotations_by_image_id[image_id].remove(annotation)
-                break
+        return self.annotations_by_image_id[image_id]
 
     def add_annotation(self, image_id, category_id, mask, poly=True):
         if mask is None:
@@ -202,7 +196,22 @@ class DatasetExplorer:
         self.__add_to_our_annotation_dict(annotation)
         self.coco_json["annotations"].append(annotation)
         self.global_annotation_id += 1
+        # print(self.coco_json["annotations"])
+
+    def del_annotation(self, image_id):
+        for single_seg in self.coco_json["annotations"].copy():
+            if single_seg["image_id"] == image_id:
+                self.coco_json["annotations"].remove(single_seg)
+        self.save_annotation()
 
     def save_annotation(self):
         with open(self.coco_json_path, "w") as f:
             json.dump(self.coco_json, f)
+
+    def save_status(self, file_name, status):
+        self.coco_json["images"][file_name]["status"] = status
+        self.save_annotation()
+
+    def delete_annotation(self, image_id):
+        self.annotations_by_image_id[image_id] = []
+        self.del_annotation(image_id)
